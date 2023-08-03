@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Node exporter for Prometheus (Monitoring Metrics)
+Documentation=https://github.com/prometheus/node_exporter
+
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node_exporter $ARGS
+
+Restart=always
+
+User=prometheus
+
+EnvironmentFile=/etc/default/prometheus-node-exporter
+
+[Install]
+WantedBy=multi-user.target

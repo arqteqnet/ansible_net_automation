@@ -1,0 +1,80 @@
+---
+- name: Generate, Assemble and Config to Juniper devices, default with no action
+  hosts:
+    - juniper
+  roles:
+    - { role: Juniper.junos, tags: [ always ] }
+    - { role: config_setup_commit,  tags: [  never, diff_merge, diff_override, merge, override ] }
+    - juniper_automation_templates
+  connection: local
+  gather_facts: no
+
+
+  vars_prompt:
+    - name: vars_prompt_username
+      prompt: "Enter your Juniper username ?"
+      private: no
+    - name: commit_description
+      prompt: "Commit Description to be added to Juniper changes ?"
+      private: no
+
+  vars:
+    file_name: "{{ inventory_hostname }}"
+    playbook_name: "Ansible Change. Comment: {{ commit_description }}"
+
+
+  tasks:
+
+    - name: assemble config fragments and perform Diff of Config Merge
+      tags: [ never, diff_merge ]
+      assemble:
+       src: "{{ config_assemble_build }}"
+       dest: "{{ config_file }}"
+      notify:
+       - Merge Diff
+       - show diff
+
+    - name: assemble config fragments and perform Diff of Config Merge
+      tags: [ never, diff_override ]
+      assemble:
+       src: "{{ config_assemble_build }}"
+       dest: "{{ config_file }}"
+      notify:
+       - Override Diff
+       - show diff
+
+
+    - name: assemble config fragments and merge changes
+      tags: [ merge, never ]
+      assemble:
+        src: "{{ config_assemble_build }}"
+        dest: "{{ config_file }}"
+      notify:
+       - Merge Config
+       - show diff
+
+    - name: assemble config fragments and overwrite config
+      tags: [ override, never ]
+      assemble:
+        src: "{{ config_assemble_build }}"
+        dest: "{{ config_file }}"
+      notify:
+        - Override Config
+        - show diff
+
+    - name: confirm_commit
+      tags: [ confirm_commit, never ]
+      juniper_junos_config:
+        provider: "{{ connection_settings }}"
+        check: yes
+        return_output: yes
+        comment: "Playbook {{ playbook_name }}"
+        ignore_warning: yes
+      register: confirm_results
+
+
+    - name: confirm output
+      tags: [ confirm_commit, never ]
+      debug:
+        var: confirm_results
+      when: confirm_results is defined

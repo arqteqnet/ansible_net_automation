@@ -1,0 +1,346 @@
+---
+################################################################################
+# Cluster Variables.
+# Used in parsers.py and api_requests.py
+################################################################################
+vpn_clusters:
+  all_vpns:
+    - se0-dc1
+    - se0-dc2
+    - se1-dc1
+    - se1-dc2
+  se0_cluster:
+    - se0-dc1
+    - se0-dc2
+################################################################################
+# source of truth for VPN routes and interfaces in Switching service
+#
+#
+#
+se0-dc1.internal.example.com:
+  ##############################################################################
+  # HUBs or AKA L2 Connection which an interface can be bound
+  ##############################################################################
+  hubs:
+    - DC1toDC2
+    - AWS-UK
+    - AZURE-UK
+    - GCP-UK
+    - IT-VPN
+    - DMZ-VPN
+    - DEFAULT
+
+  bridges:
+    DEFAULT:
+      name: DEFAULT
+      hub: DEFAULT
+      active: True
+      online: True
+      tap_mode: True
+    IT-VPN:
+      name: IT-VPN
+      hub: IT-VPN
+      active: True
+      online: True
+      tap_mode: True
+    DMZ-VPN:
+      name: DMZ-VPN
+      hub:DMZ-VPN
+      active: True
+      online: True
+      tap_mode: True
+  ##############################################################################
+  # Master Switch
+  ##############################################################################
+  master:
+  ##############################################################################
+  # Interfaces, IP details and what HUB to be bound to.
+  ##############################################################################
+    interfaces:
+      DEFAULT:
+        hub: DEFAULT
+        ip: 10.10.10.1
+        mask: 255.255.255.254
+      IT-VPN:
+        hub: IT-VPN
+        ip: 10.1.0.1
+        mask: 255.255.255.0
+      DMZ-VPN:
+        hub: DMZ-VPN
+        ip: 10.2.0.1
+        mask: 255.255.255.0
+      AWS-UK:
+        hub: AWS-UK
+        ip: 192.168.0.1
+        mask: 255.255.255.252
+      AZURE-UK:
+        hub: AZURE-UK
+        ip: 192.168.0.5
+        mask: 255.255.255.252
+      GCP-UK:
+        hub: GCP-UK
+        ip: 192.168.0.13
+        mask: 255.255.255.252
+  ##############################################################################
+  # Routes and next hops
+  ##############################################################################
+    routes:
+      default:
+        network: 0.0.0.0
+        mask: 0.0.0.0
+        gw: 10.10.10.2
+        metric: 1
+      AWS:
+        network: 10.250.0.0
+        mask: 255.255.0.0
+        gw: 192.168.0.2
+        metric: 1
+      AZURE:
+        network: 10.251.0.0
+        mask: 255.255.0.0
+        gw: 192.168.0.6
+      GCP:
+        network: 10.252.0.0
+        mask: 255.255.0.0
+        gw: 192.168.0.4
+
+
+################################################################################
+#Global options for all VPN's
+################################################################################
+GlobalOptions:
+  Radius:
+    IT-VPN:
+      RetryInterval: 500
+      Port: 2000
+      IP: 127.0.0.1
+    DMZ-VPN:
+      RetryInterval: 500
+      Port: 1812
+      IP: 127.0.0.1
+  VPN:
+    groups:
+      STANDARD:
+        hub: IT-VPN
+        GroupName: STANDARD
+        realname: "STANDARD USER"
+        PolicyActivated: True
+        AllowVPNConnections: True
+        NoDHCPServerClient: True
+        ForceDhcp: True
+        DropBUM: True
+        PrivateLan: True
+        ClientTimeOut: 360
+        MaxUpload: 0
+        MaxDownload: 0
+        MultiLoginNumber: 2
+        QoS: True
+        FilterIPv6: True
+      IT:
+        hub: IT-VPN
+        GroupName: IT
+        realname: "IT Department"
+        PolicyActivated: True
+        AllowVPNConnections: True
+        NoDHCPServerClient: True
+        ForceDhcp: True
+        DropBUM: True
+        PrivateLan: True
+        ClientTimeOut: 360
+        MaxUpload: 0
+        MaxDownload: 0
+        MultiLoginNumber: 2
+        QoS: True
+        FilterIPv6: True
+  DMZ-VPN:
+    groups:
+      QA:
+        hub: DMZ-VPN
+        GroupName: QA
+        realname: "QA & DEVS"
+        PolicyActivated: True
+        AllowVPNConnections: True
+        NoDHCPServerClient: True
+        ForceDhcp: True
+        DropBUM: True
+        PrivateLan: True
+        ClientTimeOut: 360
+        MaxUpload: 0
+        MaxDownload: 0
+        MultiLoginNumber: 5
+        QoS: True
+
+################################################################################
+#AccessLists per DC
+################################################################################
+AccessLists:
+  dc1:
+    - IT-VPN:
+      - name: DHCP RESPONSE
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 0.0.0.0
+        dst mask: 0.0.0.0
+        protocol: udp
+      - name: CLIENT RETURN TRAFFIC
+        ip version: ipv4
+        active: True
+        discard: False
+        dst ip: 10.0.0.0
+        dst mask: 255.0.0.0
+      - name: DNS TCP
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 10.10.10.8
+        dst mask: 255.255.255.248
+        protocol: tcp
+        dst port: 53
+      - name: DNS UDP
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 10.10.10.8
+        dst mask: 255.255.255.248
+        protocol: udp
+        dst port: 53
+      - name: HTTPS
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 0.0.0.0
+        dst mask: 0.0.0.0
+        protocol: tcp
+      - name: IT ALLOW ALL
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        src group: IT
+      - name: DENY RFC1918 10_8
+        ip version: ipv4
+        active: True
+        discard: True
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 10.0.0.0
+        dst mask: 255.0.0.0
+      - name: DENY RFC1918 192.168_16
+        ip version: ipv4
+        active: True
+        discard: True
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 192.168.0.0
+        dst mask: 255.255.0.0
+      - name: DENY RFC1918 172.16_12
+        ip version: ipv4
+        active: True
+        discard: True
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 172.16.0.0
+        dst mask: 255.240.0.0
+      - name: ALLOW ELSE
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 0.0.0.0
+        dst mask: 0.0.0.0
+
+    - DMZ-VPN:
+      - name: DHCP RESPONSE
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 0.0.0.0
+        dst mask: 0.0.0.0
+        protocol: udp
+      - name: CLIENT RETURN TRAFFIC
+        ip version: ipv4
+        active: True
+        discard: False
+        dst ip: 10.0.0.0
+        dst mask: 255.0.0.0
+      - name: DNS TCP
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 10.10.10.8
+        dst mask: 255.255.255.248
+        protocol: tcp
+        dst port: 53
+      - name: DNS UDP
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 10.10.10.8
+        dst mask: 255.255.255.248
+        protocol: udp
+        dst port: 53
+      - name: HTTPS
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 0.0.0.0
+        dst mask: 0.0.0.0
+        protocol: tcp
+      - name: QA ALLOW ALL
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        src group: QA
+      - name: DENY RFC1918 10_8
+        ip version: ipv4
+        active: True
+        discard: True
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 10.0.0.0
+        dst mask: 255.0.0.0
+      - name: DENY RFC1918 192.168_16
+        ip version: ipv4
+        active: True
+        discard: True
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 192.168.0.0
+        dst mask: 255.255.0.0
+      - name: DENY RFC1918 172.16_12
+        ip version: ipv4
+        active: True
+        discard: True
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 172.16.0.0
+        dst mask: 255.240.0.0
+      - name: ALLOW ELSE
+        ip version: ipv4
+        active: True
+        discard: False
+        src ip: 10.0.0.0
+        src mask: 255.0.0.0
+        dst ip: 0.0.0.0
+        dst mask: 0.0.0.0

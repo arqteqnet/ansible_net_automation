@@ -1,0 +1,7 @@
+---
+
+ansible_managed: managed by ansible
+
+resolv_conf_nameservers:
+  - 8.8.8.8
+  - 1.1.1.1

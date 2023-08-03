@@ -1,0 +1,1111 @@
+#!/usr/bin/env python3
+from io import TextIOWrapper
+from ssl import SSLContext
+from json import load
+from base64 import b64encode
+from getpass import getpass
+from argparse import ArgumentParser
+import json
+import csv
+import itertools
+import os
+import yaml
+import requests
+import sys
+import easy_ipa
+from vault_secrets_read import vault_services
+from vpn_nodes import vpn_data
+from rpc_calls import rpc_call
+from api_requests import api_request, request_mode
+from utils import program_flow
+from data_sanitisation import sanitise_data
+from parsers import data_parser
+from outputcolours import bcolours
+
+# Command line arguments for api post
+parser = ArgumentParser(
+    description='Softether RPC Json Tool')
+
+subparser = parser.add_subparsers(
+    help="Provides VPN Admin functions",
+    dest="command",
+)
+
+vault_parser = subparser.add_parser(
+    "vault",
+    help="Vault plugins",
+)
+vault_parser.add_argument(
+    '--test',
+    choices=('auth', 'lookup'),
+    default='auth',
+    type = str,
+    help = 'Vault services, including Auth testing')
+
+tester_parser = subparser.add_parser(
+    "test",
+    help="VPN Connection and Authentication Tester",
+)
+tester_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+tester_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+tester_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'Virtual Hub to query')
+
+list_user_parser = subparser.add_parser(
+    "ls_users",
+    help="List Users, formatted into Groups",
+)
+list_user_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_user_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_user_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    required=True,
+    type = str,
+    help = 'Virtual Hub to query')
+list_user_parser.add_argument(
+    '--group',
+    choices=('STANDARD', 'IT', 'QA'),
+    type = str,
+    help = 'List Users based on Group')
+
+list_ip_parser = subparser.add_parser(
+    "ls_ip",
+    help="List Users and the IP's",
+)
+list_ip_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_ip_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_ip_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    required=True,
+    type = str,
+    help = 'Virtual Hub to query')
+list_ip_parser.add_argument(
+    '--username',
+    type = str,
+    help = 'Search for Ip of user')
+list_ip_parser.add_argument(
+    '--ip',
+    type = str,
+    help = 'Search for Ip')
+
+list_groups_parser = subparser.add_parser(
+    "ls_groups",
+    help="List Groups",
+)
+list_groups_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_groups_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_groups_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    required=True,
+    type = str,
+    help = 'Virtual Hub to query')
+
+list_switch_parser = subparser.add_parser(
+    "ls_switch",
+    help="List Switches and Switch Status",
+)
+list_switch_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_switch_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_switch_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+
+
+list_interfaces_parser = subparser.add_parser(
+    "ls_interfaces",
+    help="List Interfaces defined in Switch",
+)
+list_interfaces_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_interfaces_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_interfaces_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+list_interfaces_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+
+
+list_routes_parser = subparser.add_parser(
+    "ls_routes",
+    help="List Switches and Switch Status",
+)
+list_routes_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_routes_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_routes_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+list_routes_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+
+list_overlays_parser = subparser.add_parser(
+    "ls_overlays",
+    help="List Network Overlay Connections",
+)
+list_overlays_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_overlays_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_overlays_parser.add_argument(
+    '--hub',
+    required=True,
+    type = str,
+    help = 'Virtual Hub to query')
+list_overlays_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+
+list_acl_parser = subparser.add_parser(
+    "ls_acl",
+    help="List ACL's for VPN Namespace",
+)
+list_acl_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_acl_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_acl_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    required=True,
+    type = str,
+    help = 'Virtual Hub to query')
+list_acl_parser.add_argument(
+    '--group',
+    choices=('STANDARD', 'IT', 'QA'),
+    type = str,
+    help = 'List ACL applied to specific group')
+
+list_sessions_parser = subparser.add_parser(
+    "ls_sessions",
+    help="List Sessions on VPN namespace",
+    )
+list_sessions_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+list_sessions_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+list_sessions_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    required=True,
+    type = str,
+    help = 'Virtual Hub to query')
+
+add_user_parser = subparser.add_parser(
+    "add_user",
+    help="Add Users to VPN's",
+)
+add_user_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+add_user_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+add_user_parser.add_argument(
+    '--username',
+    required=True,
+    type=str,
+    help='Username for usage with add, removal, updating')
+add_user_parser.add_argument(
+    '--realname',
+    default="",
+    type=str,
+    help='realname for usage with add, removal, updating')
+add_user_parser.add_argument(
+    '--auth',
+    choices=('radius', 'password'),
+    default='radius',
+    type = str,
+    help = 'set user authentication method, if password, string expected')
+add_user_parser.add_argument(
+    '--password',
+    default=None,
+    type = str,
+    help = 'set password for user')
+add_user_parser.add_argument(
+    '--verify',
+    default=True,
+    type = str,
+    help = 'Skip LDAP User verify')
+add_user_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'Virtual Hub to add user')
+add_user_parser.add_argument(
+    '--group',
+    choices=('BO', 'IT', 'IE', 'Office', 'MD', 'RnD', 'vpn-prob', 'FA', 'DEV_SYSTEM' ),
+    required=True,
+    type = str,
+    help = 'Group to be placed into, default is Office')
+
+edit_user_parser = subparser.add_parser(
+    "edit_user",
+    help="Edit User on VPN's",
+)
+edit_user_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+edit_user_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+edit_user_parser.add_argument(
+    '--username',
+    required=True,
+    type=str,
+    help='Username for usage with add, removal, updating')
+edit_user_parser.add_argument(
+    '--realname',
+    default="",
+    type=str,
+    help='realname for usage with add, removal, updating')
+edit_user_parser.add_argument(
+    '--auth',
+    choices=('radius', 'password'),
+    default='radius',
+    type = str,
+    help = 'set user authentication method, if password, string expected')
+edit_user_parser.add_argument(
+    '--password',
+    default=None,
+    type = str,
+    help = 'set password for user')
+edit_user_parser.add_argument(
+    '--verify',
+    default=True,
+    type = str,
+    help = 'Skip LDAP User verify')
+edit_user_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'Virtual Hub to query')
+edit_user_parser.add_argument(
+    '--group',
+    choices=('STANDARD', 'IT', 'QA'),
+    required=True,
+    type = str,
+    help = 'Group to be placed into, default is Office')
+
+
+search_user_parser = subparser.add_parser(
+    "search_user",
+    help="Searching Users on VPN's by realname (filtered) or username (exact)",
+)
+search_user_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+search_user_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+search_user_parser.add_argument(
+    '--username',
+    type=str,
+    default=None,
+    help='Username for usage with add, removal, updating')
+search_user_parser.add_argument(
+    '--realname',
+    type=str,
+    default=None,
+    help='Username for usage with add, removal, updating')
+search_user_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'Virtual Hub to query')
+
+delete_user_parser = subparser.add_parser(
+    "del_user",
+    help="Delete Users from VPN's",
+)
+delete_user_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+delete_user_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3', 'all'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+delete_user_parser.add_argument(
+    '--username',
+    required=True,
+    type=str,
+    help='Username for usage with add, removal, updating')
+delete_user_parser.add_argument(
+    '--realname',
+    type=str,
+    help='Username for usage with add, removal, updating')
+delete_user_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    required=True,
+    type = str,
+    help = 'Virtual Hub to query')
+
+add_routes_parser = subparser.add_parser(
+    "add_routes",
+    help="Add Routes to VPN Switch",
+)
+add_routes_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+add_routes_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+add_routes_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+add_routes_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+add_routes_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+add_routes_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+
+delete_routes_parser = subparser.add_parser(
+    "del_routes",
+    help="Delete Routes from VPN Switch",
+)
+delete_routes_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+delete_routes_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+delete_routes_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+delete_routes_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+delete_routes_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+delete_routes_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+
+add_hub_parser = subparser.add_parser(
+    "add_hub",
+    help="Add missing Hub to VPN",
+)
+add_hub_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+add_hub_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+add_hub_parser.add_argument(
+    '--password',
+    default=None,
+    type = str,
+    help = 'set password for user')
+add_hub_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+add_hub_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+add_hub_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+
+del_hub_parser = subparser.add_parser(
+    "del_hub",
+    help="Del Redundant Hubs from VPN",
+)
+del_hub_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+del_hub_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+del_hub_parser.add_argument(
+    '--password',
+    default=None,
+    type = str,
+    help = 'set password for user')
+del_hub_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+del_hub_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+del_hub_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+del_hub_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+
+add_interfaces_parser = subparser.add_parser(
+    "add_interfaces",
+    help="Add interfaces to VPN",
+)
+add_interfaces_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+add_interfaces_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+add_interfaces_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+add_interfaces_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+add_interfaces_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+add_interfaces_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+
+del_interfaces_parser = subparser.add_parser(
+    "del_interfaces",
+    help="Delete interfaces from VPN",
+)
+del_interfaces_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+del_interfaces_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+del_interfaces_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+del_interfaces_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+del_interfaces_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+del_interfaces_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+
+add_bridge_parser = subparser.add_parser(
+    "add_bridge",
+    help="Add a Bridge Device provide access to Host Server",
+)
+add_bridge_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+add_bridge_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+add_bridge_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+add_bridge_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+add_bridge_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+add_bridge_parser.add_argument(
+    '--l3_switch',
+    choices=('MASTER'),
+    default='MASTER',
+    help = 'selection of vpns to run actions')
+
+update_group_parser = subparser.add_parser(
+    "update_groups",
+    help="Add Groups to VPN",
+)
+update_group_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+update_group_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+update_group_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+update_group_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+update_group_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+update_group_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'HUB group Management')
+
+update_acl_parser = subparser.add_parser(
+    "update_acls",
+    help="Update ACL's on VPN",
+)
+update_acl_parser.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+update_acl_parser.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+update_acl_parser.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+update_acl_parser.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+update_acl_parser.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+update_acl_parser.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'HUB group Management')
+
+update_radius = subparser.add_parser(
+    "update_radius",
+    help="Update Radius Auth per VPN Name",
+)
+update_radius.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+update_radius.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+update_radius.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+update_radius.add_argument(
+    '--admin_mode',
+    default='Global',
+    type = str,
+    help = 'Admin Mode')
+update_radius.add_argument(
+    '--test',
+    choices=('true', 'false'),
+    default='true',
+    type = str,
+    help = 'Dry run')
+update_radius.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'HUB group Management')
+
+user_diff = subparser.add_parser(
+    "user_diff",
+    help="Diff Users between Multiple VPNs",
+)
+user_diff.add_argument(
+    '--port',
+    type=int,
+    default=5555,
+    help='port, defaults to 5555')
+user_diff.add_argument(
+    '--vpn',
+    choices=('se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3'),
+    required=True,
+    nargs='+',
+    help = 'selection of vpns to run actions')
+user_diff.add_argument(
+    '--request_type',
+    default='complex',
+    type = str,
+    help = 'Request Type')
+user_diff.add_argument(
+    '--admin_mode',
+    default=None,
+    type = str,
+    help = 'Admin Mode')
+user_diff.add_argument(
+    '--hub',
+    choices=('IT-VPN', 'DMZ-VPN'),
+    default='-IT-VPN',
+    type = str,
+    help = 'HUB group Management')
+
+args = parser.parse_args()
+
+################################################################################
+##################FUTURE USAGE OF EXPORTS#######################################
+def local_secrets_export():
+        if os.environ.get('VPN_SECRETS') is not None:
+            path = os.environ.get('VPN_SECRETS')
+            ret = True
+        else:
+            print(f'''\n{bcolours.FAIL}Local Secrets Path Environment
+variable NOT set.\nDefaulting to Vault{bcolours.ENDC}\n''')
+            path = None
+
+        return path
+
+
+################################################################################
+##################FUTURE USAGE OF EXPORTS#######################################
+def vault_path_export():
+        if os.environ.get('VAULT_PATH') is not None:
+            path = os.environ.get('VAULT_PATH')
+            ret = True
+        else:
+            print(f'''\n{bcolours.FAIL}VPN Vault Path Environment variable
+NOT set.\nDefault = PATH/sevpn/hub_credentials {bcolours.ENDC}\n''')
+            path = "PATH/sevpn/hub_credentials"
+
+        return path
+
+
+################################################################################
+##############IMPORT VPN YAML CONFIG FILE#######################################
+def local_secrets(config_path) -> dict:
+    if not os.path.exists(config_path):
+        print(f"ERR: Cannot find config file {config_path}")
+        return False
+    with open(config_path, "r") as stream:
+        try:
+            config = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(f"ERR: Unable to load config file from {config_path}")
+            print(exc)
+            return False
+    return config
+
+################################################################################
+##############IMPORT VPN YAML CONFIG FILE#######################################
+def vpn_config(config_path="vpn_config.yaml") -> dict:
+    if not os.path.exists(config_path):
+        print(f"ERR: Cannot find config file {config_path}")
+        return False
+    with open(config_path, "r") as stream:
+        try:
+            config = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(f"ERR: Unable to load config file from {config_path}")
+            print(exc)
+            return False
+    return config
+
+################################################################################
+##############MAIN FUNCTION FOR VPN TOOLING#####################################
+def main(args):
+    program_logic = program_flow(args)
+
+#####CALL VAULT TO RETRIEVE SECRETS OR LOGIN IF ARGS != NONE####################
+    if args.command is not None:
+        vault = vault_services()
+        if local_secrets_export() == None:
+            vpn_secrets = vault.read_secrets(secrets_path=vault_path_export())
+
+            encryption_key = vault.read_secrets(
+                             secrets_path="PATH/sevpn/encryption_key"
+                             )
+            
+            setattr(args, 'encryption_key', encryption_key['data']['data']['master_key'])
+        elif local_secrets_export() != None:
+            vpn_secrets = local_secrets(local_secrets_export())
+            setattr(args, 'encryption_key', vpn_secrets['secrets']['encryption']['master_key'])
+        ipa_module = easy_ipa.ipa(args=args)
+################################################################################
+########TEST VAULT AUTH#########################################################
+        if args.command == "vault":
+             if args.test == "auth":
+                 if vault.token_assert() is True:
+                      print("Vault Authentication Successful")
+
+################################################################################
+########VPN TOOLING SPECIFIC COMMANDS###########################################
+        else:
+
+################################################################################
+############PREVENT NON ADMIN COMMANDS FROM ERRORING WITHOUT VALUE##############
+            try:
+                admin_mode = args.admin_mode
+            except AttributeError:
+                admin_mode = None
+
+################################################################################
+############NON-ADMIN SECERTS ACCESS eg NON-PRIV STAFF##########################
+            if admin_mode == None:
+                if local_secrets_export() == None:
+################READ SECRETS USING DEFAULT PATH#################################
+                     secret = vpn_secrets['data']['data'][args.hub]
+################SECRETS DICTIONARY##############################################
+                elif local_secrets_export() != None:
+                    secret = vpn_secrets['secrets']['hubs'][args.hub]
+                vpn_admin = None
+
+################################################################################
+############GLOBAL ADMIN FOR HIGH PRIV SECRETS##################################
+            elif admin_mode == "Global":
+                if local_secrets_export() == None:
+################READ SECRETS USING DEFAULT PATH#################################
+                     vpn_secrets = vault.read_secrets(secrets_path="PATH/sevpn/global")
+                     secret = vpn_secrets['data']['data']['global_admin']
+################SECRETS DICTIONARY##############################################
+                elif local_secrets_export() != None:
+                    secret = vpn_secrets['secrets']['global_admin']
+################SET ADMIN TO TRUE BOLEAN########################################
+                vpn_admin = True
+            # Placeholder for when performing Global Admin functions compared to Hub Admin functions
+
+
+################################################################################
+############ENSURE USER IS PROVIDED IN SEARCH USER FLOW#########################
+            try:
+                if args.command == "search_user":
+                    if args.username is None and args.realname is None:
+                        print("\nNo username or realname defined, exiting.")
+                        sys.exit(1)
+            except AttributeError as err:
+                print(f"\nError: {err}, exiting")
+                sys.exit(1)
+
+################################################################################
+############SETTING AUTH VALUE AND PASSWORD IF REQUIRED#########################
+            try:
+                if args.command == "edit_user" or args.command == "add_user":
+                    if args.verify == True:
+                        ipa_module.cookie_assert()
+                        data, status = ipa_module.ping()
+                        if status.status_code == 200:
+                            user_check = ipa_module.user_show(args.username)
+                            if user_check['result'] is not None:
+                                print("\nLDAP User found")
+                                print(f"Username: {user_check['result']['result']['uid'][0]}")
+                                print(f"Full Name: {user_check['result']['result']['cn'][0]}")
+                                args.realname = user_check['result']['result']['cn'][0]
+                            elif user_check['result'] is None:
+                                print(user_check['error']['message'])
+                                print("Please check user exists in LDAP Directory. Exiting")
+                                exit(1)
+                        else:
+                            print("IPA Login failed. Passing IPA User check")
+
+
+                    if args.auth == "password":
+                        args.password = getpass('Enter User Password: ')
+                        args.auth = 1
+                    elif args.auth == "radius":
+                        args.auth = 4
+
+                if args.command == "user_diff":
+                    user_dict = {}
+                    ipa_module.cookie_assert()
+                    data, status = ipa_module.ping()
+                    if status.status_code == 200:
+                        ldap_diff = ipa_module.user_find()
+                        if ldap_diff['result'] is not None:
+                            for user in ldap_diff['result']['result']:
+                                user_dict.update({ user['uid'][0] : user['cn'][0] })
+
+                        elif ldap_diff['result'] is None:
+                            print(ldap_diff['error']['message'])
+                            exit(1)
+
+                        setattr(args, 'ldap_users', user_dict)
+                    else:
+                        print("IPA Login failed. Passing IPA User check")
+
+
+            except AttributeError as err:
+                print(f"\nError: {err}, exiting")
+                sys.exit(1)
+
+################################################################################
+############IMPORT VPN CONFIG YAML FILE AND CREATE ARRAY OF VPN IF ALL ARGS SET#
+            try:
+                config = vpn_config()
+                if args.vpn == ["all"]:
+                    args.vpn = ['se0-dc2', 'se1-dc2', 'se0-dc1', 'se1-dc1', 'se0-dc3', 'se1-dc3']
+                elif args.vpn == ['se0-dc2'] or args.vpn == ['se0-dc1']:
+                    fault_check = ['se0-dc2', 'se0-dc1']
+                elif args.vpn == ['se1-dc2'] or args.vpn == ['se1-dc1']:
+                    fault_check = ['se1-dc2', 'se1-dc1']
+            except AttributeError as err:
+                print(f"\nError: {err}, exiting")
+                sys.exit(1)
+
+################################################################################
+###ADDING RESOURCES REQUIRES MULTIPLE API CALLS, LOGIC FOR SIMPLE/COMPLEX TASK##
+
+            try:
+                request_type = args.request_type
+            except AttributeError:
+                request_type = "simple"
+
+################INSTATIATE REQUESTS CLASS#######################################
+            request_call = request_mode(args, config, secret, vpn_admin, vpn_secrets)
+
+################################################################################
+            if request_type == "simple":
+                request_action = request_call.simple_request()
+################################################################################
+
+############COMPLEX REQUEST WITH MULTIPLE API REQUEST CALLS#####################
+            elif request_type == "complex":
+                complex_action = getattr(request_call, args.command)
+                complex_action()
+
+####ENSURE ERROR IS RETURNED IF NO ARGS SUPPLIED################################
+    else:
+        print("\nNo positional arguments provided.\nPlease use [-h, --help] or read documentation.\n")
+        sys.exit(1)
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    sevpn = main(args)

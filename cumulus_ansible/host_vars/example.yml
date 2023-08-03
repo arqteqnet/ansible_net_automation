@@ -1,0 +1,294 @@
+---
+
+license: example_license
+
+loopback:
+    name: lo
+    auto: true
+
+interfaces:
+  - name: eth0
+    auto: true
+    address: 10.10.10.5/24
+    gateway: 10.10.10.1
+    vrf: mgmt
+
+  - name: eth1
+    auto: true
+
+  - name: swp1
+    auto: true
+    vlans: 2-10
+    alias: server3 single link
+    mtu: 9216
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+
+
+  - name: swp10
+    auto: true
+    alias: server0-bond
+    link_speed: 10000
+    mtu: 9216
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+  - name: swp20
+    auto: true
+    alias: server1-bond
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+  - name: swp30
+    auto: true
+    alias: server1-bond
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+#break out examples
+  - name: swp49s0
+    auto: true
+    mtu: 9216
+    alias: server4-bond
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+  - name: swp49s1
+    auto: true
+    alias: server5-bond
+    mtu: 9216
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+#peering link interfaces
+  - name: swp55
+    auto: true
+    link_speed: 40000
+    mtu: 9216
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+  - name: swp56
+    auto: true
+    link_speed: 40000
+    mtu: 9216
+    storm_control_runtime: false
+    storm_control:
+        broadcast: 400
+        unknown_unicast: 500
+        multicast: 3000
+
+
+  - name: bridge
+    bridge_ports: router0-bond router1-bond server0-bond server1-bond swp1
+    bridge_stp: on
+    vlans: 25-1000 2000-2500
+    vlan_aware: bridge-vlan-aware
+    stp_priority: 16384
+
+
+  - name: mgmt
+    address: 127.0.0.1/8
+    vrf_table: auto
+
+  - name: router0-bond
+    bond_mode: 802.3ad
+    slave: swp49s0
+    vlans: 1999
+    clag_id: 33
+    bpduguard: mstpctl-bpduguard yes
+    stp_edge: true
+    mtu: 9216
+
+  - name: router1-bond
+    bond_mode: 802.3ad
+    slave: swp49s1
+    vlans: 1999
+    clag_id: 34
+    bpduguard: mstpctl-bpduguard yes
+    stp_edge: true
+    mtu: 9216
+
+  - name: server0-bond
+    bond_mode: 802.3ad
+    slave: swp10
+    vlans: 2-10 50-55
+    clag_id: 2
+    bpduguard: mstpctl-bpduguard yes
+    stp_edge: true
+    mtu: 9216
+
+  - name: server1-bond
+    bond_mode: 802.3ad
+    slave: swp20
+    vlans: 2-10 50-55
+    clag_id: 3
+    bpduguard: mstpctl-bpduguard yes
+    stp_edge: true
+    mtu: 9216
+
+  - name:  server3-bond
+    bond_mode: 802.3ad
+    lacp_bypass: true
+    slave: swp30
+    access_vlan: 28
+    clag_id: 19
+    bpduguard: mstpctl-bpduguard yes
+    stp_edge: true
+    mtu: 9216
+
+  - name: peerlink
+    bond_mode: 802.3ad
+    slave: swp55 swp56
+    mtu: 9216
+
+  - name: peerlink.4094
+    address: 192.168.255.1/30
+    clagd_backup_peer: 192.168.255.2
+    clagd_peer: 192.168.255.2
+    clagd_mac: FF:FF:FF:FF:FF:FF #replace with mac of cumulus
+
+
+ports:
+  - comment:
+    - SFP+ ports
+    - <port label>    = <10G>
+  - name: 1
+    type: 1x
+  - name: 2
+    type: 1x
+  - name: 3
+    type: 1x
+  - name: 4
+    type: 1x
+  - name: 5
+    type: 1x
+  - name: 6
+    type: 1x
+  - name: 7
+    type: 1x
+  - name: 8
+    type: 1x
+  - name: 9
+    type: 1x
+  - name: 10
+    type: 1x
+  - name: 11
+    type: 1x
+  - name: 12
+    type: 1x
+  - name: 13
+    type: 1x
+  - name: 14
+    type: 1x
+  - name: 15
+    type: 1x
+  - name: 16
+    type: 1x
+  - name: 17
+    type: 1x
+  - name: 18
+    type: 1x
+  - name: 19
+    type: 1x
+  - name: 20
+    type: 1x
+  - name: 21
+    type: 1x
+  - name: 22
+    type: 1x
+  - name: 23
+    type: 1x
+  - name: 24
+    type: 1x
+  - name: 25
+    type: 1x
+  - name: 26
+    type: 1x
+  - name: 27
+    type: 1x
+  - name: 28
+    type: 1x
+  - name: 29
+    type: 1x
+  - name: 30
+    type: 1x
+  - name: 31
+    type: 1x
+  - name: 32
+    type: 1x
+  - name: 33
+    type: 1x
+  - name: 34
+    type: 1x
+  - name: 35
+    type: 1x
+  - name: 36
+    type: 1x
+  - name: 37
+    type: 1x
+  - name: 38
+    type: 1x
+  - name: 39
+    type: 1x
+  - name: 40
+    type: 1x
+  - name: 41
+    type: 1x
+  - name: 42
+    type: 1x
+  - name: 43
+    type: 1x
+  - name: 44
+    type: 1x
+  - name: 45
+    type: 1x
+  - name: 46
+    type: 1x
+  - name: 47
+    type: 1x
+  - name: 48
+    type: 1x
+    comment:
+      - QSFP28 ports
+      - ""
+      - <port label>    = [40G|50G|100G]
+      - or when split = [2x50G|4x10G|4x25G|disabled]
+  - name: 49
+    type: 4x10G
+  - name: 50
+    type: disabled
+  - name: 51
+    type: 1x
+  - name: 52
+    type: 1x
+  - name: 53
+    type: 1x
+  - name: 54
+    type: 1x
+  - name: 55
+    type: 1x
+  - name: 56
+    type: 1x

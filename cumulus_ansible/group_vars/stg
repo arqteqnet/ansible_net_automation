@@ -1,0 +1,7 @@
+---
+
+repo_url: repo.stg.internal.example.com
+
+prm_servers:
+  - "{{ lookup('dig', 'prm0.stg.internal.example.com') }}"
+  - "{{ lookup('dig', 'prm1.stg.internal.example.com') }}"

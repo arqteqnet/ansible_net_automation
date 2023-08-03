@@ -1,0 +1,56 @@
+---
+- name: Backup interface Configuration
+  fetch:
+    src: /etc/network/interfaces
+    flat: yes
+    dest: backup/{{inventory_hostname}}/interfaces
+
+- name: Backup FRRouting daemon configuration
+  fetch:
+    src: /etc/frr/daemons
+    flat: yes
+    dest: backup/{{inventory_hostname}}/daemons
+
+- name: Backup FRRouting configuration
+  fetch:
+    src: /etc/frr/frr.conf
+    flat: yes
+    dest: backup/{{inventory_hostname}}/frr.conf
+
+- name: Backup Ports configuration
+  fetch:
+    src: /etc/cumulus/ports.conf
+    flat: yes
+    dest: backup/{{inventory_hostname}}/ports.conf
+
+- name: run show config commands
+  shell: 'net show config commands | grep net | grep -v dot1x | grep -v "del all" > {{inventory_hostname}}_nclu'
+      
+- name: fetch the file and store it locally
+  fetch:
+    dest: backup/{{inventory_hostname}}/nclu_config_file
+    src: /home/{{ansible_user}}/{{inventory_hostname}}_nclu
+    flat: yes
+  # This task grabs the output from the previous command and stores it as a flat-file locally on the machine running ansible
+
+  #The next two stanzas are not required, but grabs the rendered config if you prefer them over NCLU (net) commands
+
+- name: run show config files
+  shell: 'net show config files > {{inventory_hostname}}_config_files'
+  # This grabs all the rendered configurations (vs the net commands)
+
+- name: fetch the file and store it locally
+  fetch:
+    dest: backup/{{inventory_hostname}}/net_command_config_files
+    src: /home/{{ansible_user}}/{{inventory_hostname}}_config_files
+    flat: yes
+  # This task grabs the rendered configuration from the previous command and stores it locally on the machine running ansible
+
+- name: run show license file
+  shell: 'cl-license > {{inventory_hostname}}_license'
+
+- name: fetch license file
+  fetch:
+    dest: backup/license_files/{{inventory_hostname}}_license
+    src: /home/{{ansible_user}}/{{inventory_hostname}}_license
+    flat: yes

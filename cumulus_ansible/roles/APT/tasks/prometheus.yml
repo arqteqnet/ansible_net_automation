@@ -1,0 +1,73 @@
+---
+
+- name: Install Apt packages
+  apt:
+    pkg:
+    - prmaggregator
+    - nodeexporter
+    - interfaceexporter
+  register: prm
+  when: ansible_os_family == 'Debian'
+
+- name: create prometheusAggregator systemd service file
+  template:
+    src: prometheus_aggregator_service.j2
+    dest: /etc/systemd/system/prometheusAggregator.service
+    owner: root
+    group: root
+    mode: 0644
+  when: (ansible_os_family == "Debian")
+  notify: enable prometheusAggregator
+
+- name: create node_exporter systemd service file
+  template:
+    src: node_exporter_service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: 0644
+  when: (ansible_os_family == "Debian")
+  notify: enable node_exporter
+
+- name: create interface_exporter systemd service file
+  template:
+    src: interface_exporter_service.j2
+    dest: /etc/systemd/system/interface_exporter.service
+    owner: root
+    group: root
+    mode: 0644
+  when: (ansible_os_family == "Debian")
+  notify: enable interface_exporter
+
+- name: Create PrometheusAggregator Directory
+  file:
+    path: /etc/prometheusAggregator/
+    state: directory
+    owner: root
+    group: root
+    mode: 0775
+
+- name: Add the prm user
+  ansible.builtin.user:
+    name: prometheus
+    shell: /bin/false
+
+- name: prometheusAggregator Config
+  template:
+    src: prometheus_aggregator_config.j2
+    dest: /etc/prometheusAggregator/config.yaml
+    owner: prometheus
+    group: prometheus
+    mode: 0644
+  when: (ansible_os_family == "Debian")
+  notify: restart prometheusAggregator
+
+- name: node_exporter args config
+  template:
+    src: node_exporter_args.j2
+    dest: /etc/default/prometheus-node-exporter
+    owner: root
+    group: root
+    mode: 0644
+  when:  (ansible_os_family == "Debian")
+  notify: restart node_exporter

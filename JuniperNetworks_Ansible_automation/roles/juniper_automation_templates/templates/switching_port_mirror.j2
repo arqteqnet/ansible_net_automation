@@ -1,0 +1,123 @@
+#jinja2:lstrip_blocks:True
+{% set personality = junos.personality | lower %}
+{% set model = junos.model | lower %}
+{% set version = junos.version | lower %}
+{% if personality == 'switch' %}
+{% if 'ex4200' in model or 'ex2200' in model %}
+{% if switching_port_mirror is defined %}
+ethernet-switching-options {
+    analyzer port_mirror {
+        {% if switching_port_mirror.input is defined %}
+        input {
+            ingress {
+                {% if switching_port_mirror.input.interface is defined %}
+                {% if switching_port_mirror.input.interface is string %}
+                interface {{ switching_port_mirror.input.interface }};
+                {% else %}
+                {% for iface in switching_port_mirror.input.interface %}
+                interface {{ iface }};
+                {% endfor %}
+                {% endif %}
+                {% endif %}
+
+                {% if switching_port_mirror.input.vlan is defined %}
+                {% if switching_port_mirror.input.vlan is string %}
+                vlan {{ switching_port_mirror.input.vlan }};
+                {% else %}
+                {% for vlan in switching_port_mirror.input.vlan %}
+                vlan {{ vlan }};
+                {% endfor %}
+                {% endif %}
+                {% endif %}
+
+            }
+        }
+        {% endif %}
+        {% if switching_port_mirror.output is defined %}
+        output {
+            {% if switching_port_mirror.output.interface is defined %}
+            {% if switching_port_mirror.output.interface is string %}
+            interface {{ switching_port_mirror.output.interface }};
+            {% else %}
+            {% for iface in switching_port_mirror.output.interface %}
+            interface {{ iface }};
+            {% endfor %}
+            {% endif %}
+            {% endif %}
+
+            {% if switching_port_mirror.output.vlan is defined %}
+            {% if switching_port_mirror.output.vlan is string %}
+            vlan {{ switching_port_mirror.output.vlan }};
+            {% else %}
+            {% for vlan in switching_port_mirror.output.vlan %}
+            vlan {{ vlan }};
+            {% endfor %}
+            {% endif %}
+            {% endif %}
+            }
+        }
+
+    {% endif %}
+}
+{% endif %}
+{% elif 'ex3400' in model or 'ex4300' in model %}
+{% if switching_port_mirror is defined %}
+forwarding-options {
+    analyzer {
+        {{ switching_port_mirror.name }} {
+        {% if switching_port_mirror.input is defined %}
+        input {
+            ingress {
+                {% if switching_port_mirror.input.interface is defined %}
+                {% if switching_port_mirror.input.interface is string %}
+                interface {{ switching_port_mirror.input.interface }};
+                {% else %}
+                {% for iface in switching_port_mirror.input.interface %}
+                interface {{ iface }};
+                {% endfor %}
+                {% endif %}
+                {% endif %}
+
+                {% if switching_port_mirror.input.vlan is defined %}
+                {% if switching_port_mirror.input.vlan is string %}
+                vlan {{ switching_port_mirror.input.vlan }};
+                {% else %}
+                {% for vlan in switching_port_mirror.input.vlan %}
+                vlan {{ vlan }};
+                {% endfor %}
+                {% endif %}
+                {% endif %}
+
+            }
+        }
+        {% endif %}
+        {% if switching_port_mirror.output is defined %}
+        output {
+            {% if switching_port_mirror.output.interface is defined %}
+            {% if switching_port_mirror.output.interface is string %}
+            interface {{ switching_port_mirror.output.interface }};
+            {% else %}
+            {% for iface in switching_port_mirror.output.interface %}
+            interface {{ iface }};
+            {% endfor %}
+            {% endif %}
+            {% endif %}
+
+            {% if switching_port_mirror.output.vlan is defined %}
+            {% if switching_port_mirror.output.vlan is string %}
+            vlan {{ switching_port_mirror.output.vlan }};
+            {% else %}
+            {% for vlan in switching_port_mirror.output.vlan %}
+            vlan {{ vlan }};
+            {% endfor %}
+            {% endif %}
+            {% endif %}
+            }
+        }
+
+    {% endif %}
+    }
+}
+{% endif %}
+{% endif %}
+{% endif %}

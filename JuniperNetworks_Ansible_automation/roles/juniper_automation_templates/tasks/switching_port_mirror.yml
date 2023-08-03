@@ -1,0 +1,5 @@
+---
+- name: switching port mirroring options
+  template:
+    src: switching_port_mirror.j2
+    dest: "{{ config_assemble_build }}/switching_port_mirror.conf"

@@ -1,0 +1,49 @@
+---
+
+- name: Juniper Show Commands Playbook
+  hosts:
+    - juniper
+  roles:
+    - { role: ssh_local_copy,  tags: [ always ] }
+    - { role: Juniper.junos, tags: [ always ] }
+    - { role: show_commands, tags: [ always ] }
+  connection: local
+  gather_facts: no
+
+
+  vars:
+    file_name: "{{ inventory_hostname }}"
+    ansible_ssh_private_key_file: /tmp/ansible
+    vars_prompt_username: "{{ ssh_user }}"
+    route: brief
+
+  tasks:
+    - name: Show Commands
+      tags: [ never, show ]
+      juniper_junos_command:
+        provider: "{{ connection_settings }}"
+        command: "{{ item }}"
+        formats:
+          - "json"
+        dest: "{{ commands_dest }}_commands_output"
+        return_output: yes
+        ignore_warning: yes
+      loop:
+        - "{{ commands }}"
+      register: command_results
+      notify:
+        - delete key
+
+    - name: Show Route Commands                      
+      tags: [ never, show_route ]
+      juniper_junos_command:
+        provider: "{{ connection_settings }}"
+        command: "show route {{ route }}"
+        formats:
+          - "json"
+        dest: "{{ commands_dest }}_route_output"
+        return_output: yes
+        ignore_warning: yes
+      register: command_results
+      notify:
+        - delete key

@@ -1,0 +1,5 @@
+---
+- name: forwarding options settings
+  template:
+    src: forwarding_options.j2
+    dest: "{{ config_assemble_build }}/forwarding_options.conf"

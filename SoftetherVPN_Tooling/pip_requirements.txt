@@ -1,0 +1,16 @@
+### PIP Requirements
+
+# Vault
+hvac
+
+# Cryptography
+pycryptodomex
+
+#Password Input
+getpass3
+
+#Hashing Library
+#hashlib
+
+#Diff Library
+deepdiff

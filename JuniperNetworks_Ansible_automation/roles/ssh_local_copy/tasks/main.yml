@@ -1,0 +1,6 @@
+---
+-  name: write ssh to temp file
+   ansible.builtin.copy:
+    content: "{{ ssh_key }}"
+    dest: "{{ ssh_path }}"
+    mode: 0600

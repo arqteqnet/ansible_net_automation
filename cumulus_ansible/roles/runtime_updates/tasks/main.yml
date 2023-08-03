@@ -1,0 +1,17 @@
+---
+- name: import and apply stormcontrol runtime updates demo
+  include: stormcontrol_demo.yml
+  tags:
+    - never
+    - diff_set
+    - stormcontrol
+    - runtime
+
+- name: import and apply stormcontrol runtime updates
+  include: stormcontrol.yml
+  tags:
+    - never
+    - set
+    - stormcontrol
+    - runtime
+    - highstate

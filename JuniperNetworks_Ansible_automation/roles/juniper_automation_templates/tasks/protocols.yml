@@ -1,0 +1,5 @@
+---
+- name: all other protocol settings
+  template:
+    src: protocols.j2
+    dest: "{{ config_assemble_build }}/protocols.conf"

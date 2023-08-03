@@ -1,0 +1,62 @@
+---
+
+- name: Juniper Show Commands Playbook
+  hosts:
+    - juniper
+  roles:
+    - { role: Juniper.junos, tags: [ always ] }
+    - { role: show_commands, tags: [ always ] }
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - name: route
+      prompt: "Address or Name of route you want to check"
+      private: no
+      default: 0.0.0.0/0
+
+
+  vars:
+    file_name: "{{ inventory_hostname }}"
+    ssh_user: "ansible_noc"
+    vars_prompt_username: "{{ ssh_user }}"
+
+  tasks:
+    - name: Show Route Commands IP
+      juniper_junos_command:
+        provider: "{{ connection_settings }}"
+        command: "show route {{ route }} active-path"
+        formats:
+          - "text"
+      register: ip_command_results
+      when: route | ansible.utils.ipaddr
+
+    - name: Print IP Route Response
+      debug:
+        var: ip_command_results.stdout_lines
+      when: ip_command_results.stdout_lines is defined
+
+    - name: Resolve DNS
+      command: nslookup {{ route }}
+      ignore_errors: true
+      register: dns_lookup
+      when: route is string and ip_command_results.stdout_lines is not defined
+
+    - name: Print DNS Response
+      debug:
+        var: dns_lookup.stdout_lines
+      when: route is string and ip_command_results.stdout_lines is not defined
+
+    - name: Show Route Commands FQDN
+      juniper_junos_command:
+        provider: "{{ connection_settings }}"
+        command: "show route {{ lookup('community.general.dig', route, 'fail_on_error=True') }}"
+        formats:
+          - "text"
+      register: command_results
+      when: dns_lookup.stdout is defined and "NXDOMAIN" not in dns_lookup.stdout and ip_command_results.stdout_lines is not defined
+
+    - name: Print FQDN Route Response
+      debug:
+        var: command_results.stdout_lines
+      when: command_results.stdout_lines is defined

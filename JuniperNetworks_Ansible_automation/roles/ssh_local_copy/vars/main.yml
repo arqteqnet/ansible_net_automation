@@ -1,0 +1,4 @@
+---
+ssh_key: "{{ lookup('hashi_vault','secret=path_to_key') }}"
+ssh_path: "/tmp/ansible_noc"
+ssh_user: "ansible"

@@ -1,0 +1,12 @@
+---
+- name: import and apply yoti repos
+  include: yoti_repo.yml
+  tags:
+    - all
+    - apt
+
+- name: import and install prometheus
+  include: prometheus.yml
+  tags:
+    - all
+    - apt

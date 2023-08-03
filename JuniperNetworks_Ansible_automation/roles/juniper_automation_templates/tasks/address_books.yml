@@ -1,0 +1,15 @@
+---
+- name: firewall address book settings
+  template:
+    src: address_entries.j2
+    dest: "{{ config_assemble_build }}/address_entries.conf"
+
+- name: "Grep for NXDOMAIN"
+  shell: "grep -i NXDOMAIN {{ config_assemble_build }}/address_entries.conf"
+  register: address_entries_grep
+  failed_when: address_entries_grep.rc != 1 and address_entries_grep.rc != 0
+
+- name: "Fail if NXDOMAIN"
+  fail:
+    msg: "Failed DNS FQDN's: {{ address_entries_grep.stdout_lines }} "
+  when: '"NXDOMAIN" in address_entries_grep.stdout'

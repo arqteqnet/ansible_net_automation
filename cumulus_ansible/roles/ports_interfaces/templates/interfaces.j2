@@ -1,0 +1,114 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+# ANSIBLE MANAGED FILE
+source /etc/network/interfaces.d/*.intf
+
+{% if loopback.name is defined %}
+# The loopback network interface
+auto {{ loopback.name }}
+iface {{ loopback.name }} inet loopback
+{% endif %}
+{% for interface in interfaces %}
+
+auto {{ interface.name }}
+iface {{ interface.name }}
+{% if interface.address is defined %}
+    address {{ interface.address }}
+{% endif %}
+{% if interface.alias is defined %}
+    alias {{ interface.alias }}
+{% endif %}
+{% if interface.gateway is defined %}
+    gateway {{ interface.gateway }}
+{% endif %}
+{% if interface.vrf is defined %}
+    vrf {{ interface.vrf }}
+{% endif %}
+{% if interface.vrf_table is defined %}
+    vrf-table {{ interface.vrf_table }}
+{% endif %}
+{% if interface.clagd_backup_peer is defined %}
+    clagd-backup-ip {{ interface.clagd_backup_peer }}
+{% endif %}
+{% if interface.clagd_peer is defined %}
+    clagd-peer-ip {{ interface.clagd_peer }}
+{% endif %}
+{% if interface.clagd_mac is defined %}
+    clagd-sys-mac {{ interface.clagd_mac }}
+{% endif %}
+{% if interface.link_duplex is defined %}
+    link-duplex {{ interface.link_duplex }}
+{% endif %}
+{% if interface.no_autonegatiation is defined %}
+{% if interface.no_autonegatiation == True %}
+    link-autoneg off
+{% endif %}{% endif %}
+{% if interface.link_speed is defined %}
+    link-speed {{ interface.link_speed }}
+{% endif %}
+{% if interface.bond_mode is defined %}
+    bond-mode {{ interface.bond_mode }}
+{% endif %}
+{% if interface.lacp_bypass is defined %}
+{% if interface.lacp_bypass == True %}
+    bond-lacp-bypass-allow yes
+{% endif %}{% endif %}
+{% if interface.lacp_rate is defined %}
+    bond-lacp-rate {{ interface.lacp_rate }}
+{% endif %}
+{% if interface.miimon is defined %}
+    bond-miimon {{ interface.miimon }}
+{% endif %}
+{% if interface.bond_min_links is defined %}
+    bond-min-links {{ interface.bond_min_links }}
+{% endif %}
+{% if interface.slave is defined %}
+    bond-slaves {{ interface.slave }}
+{% endif %}
+{% if interface.carrier is defined %}
+    bond-use-carrier {{ interface.carrier }}
+{% endif %}
+{% if interface.loadbalance_hash is defined %}
+    bond-xmit-hash-policy {{ interface.loadbalance_hash }}
+{% endif %}
+{% if interface.bridge_ports is defined %}
+    bridge-ports {{ interface.bridge_ports }}
+{% endif %}
+{% if interface.bridge_stp is defined %}
+    bridge-stp on
+{% endif %}
+{% if interface.vlans is defined %}
+    bridge-vids {{ interface.vlans }}
+{% endif %}
+{% if interface.access_vlan is defined %}
+    bridge-access {{ interface.access_vlan }}
+{% endif %}
+{% if interface.vlan_aware is defined %}
+    {{ interface.vlan_aware }} yes
+{% endif %}
+{% if interface.stp_priority is defined %}
+    mstpctl-treeprio {{ interface.stp_priority }}
+{% endif %}
+{% if interface.clag_id is defined %}
+    clag-id {{ interface.clag_id }}
+{% endif %}
+{% if interface.bpduguard is defined %}
+    {{ interface.bpduguard }}
+{% endif %}
+{% if interface.stp_edge is defined %}
+{% if interface.stp_edge == True %}
+    mstpctl-portadminedge yes
+{% endif %}
+{% endif %}
+{% if interface.bpdufilter is defined %}
+    {{ interface.bpdufilter }}
+{% endif %}
+{% if interface.disabled is defined %}
+{% if interface.disabled == True %}
+    link-down yes
+{% endif %}
+{% endif %}
+{% if interface.mtu is defined %}
+    mtu {{ interface.mtu }}
+{% endif %}
+{% endfor %}

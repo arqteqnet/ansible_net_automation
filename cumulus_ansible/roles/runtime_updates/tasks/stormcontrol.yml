@@ -1,0 +1,17 @@
+---
+
+- name: Broadcast Runtime update
+  ansible.builtin.shell: sh -c 'echo {{ item.storm_control.broadcast }} > /cumulus/switchd/config/interface/{{item.name}}/storm_control/broadcast'
+  with_items: "{{ interfaces }}"
+  when: item.storm_control_runtime is defined and item.storm_control_runtime is true
+
+
+- name: Multicast Runtime update
+  ansible.builtin.shell: sh -c 'echo {{ item.storm_control.multicast }} > /cumulus/switchd/config/interface/{{item.name}}/storm_control/multicast'
+  with_items: "{{ interfaces }}"
+  when: item.storm_control_runtime is defined and item.storm_control_runtime is true 
+
+- name: unknown_unicast Runtime update
+  ansible.builtin.shell: sh -c 'echo {{ item.storm_control.unknown_unicast }} > /cumulus/switchd/config/interface/{{item.name}}/storm_control/unknown_unicast'
+  with_items: "{{ interfaces }}"
+  when: item.storm_control_runtime is defined and item.storm_control_runtime is true 

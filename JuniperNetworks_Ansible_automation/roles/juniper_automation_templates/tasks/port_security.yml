@@ -1,0 +1,5 @@
+---
+- name: layer 2 port security settings
+  template:
+    src: port_security.j2
+    dest: "{{ config_assemble_build }}/port_security.conf"

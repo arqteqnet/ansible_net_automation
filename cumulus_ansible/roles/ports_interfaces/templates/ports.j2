@@ -1,0 +1,111 @@
+# ANSIBLE MANAGED CONFIG
+{% if 'MSN2410' in ansible_product_name %}
+# ports.conf --
+#
+#        This file controls port speed, aggregation and subdivision.
+#
+# For example, some QSFP ports can be split into multiple interfaces. This
+# file sets the number of interfaces per port and the speed of those interfaces.
+#
+# You must reload switchd for changes to take effect.
+#
+# mlnx,x86_MSN2410B has:
+#     48  SFP+ ports numbered 1-48
+#         These ports are configurable as 10G only.
+#
+#      8  QSFP ports numbered 49-56
+#         These ports are configurable as 40G, 50G, 2x50G, or 100G; or a subset
+#         of them can be split into 4x25G or 4x10G.
+#
+#         Note that a port may become disabled, i.e., unusable and unconfigurable
+#         in /etc/network/interfaces, when an adjacent port is split into 4
+#         interfaces. It is REQUIRED that the disabled port be configured as
+#         "disabled" in this file when an adjacent port is split into 4
+#         interfaces.
+#
+# NOTE: When ports are split into 4 interfaces it is REQUIRED that the adjacent
+# disabled port be configured as "disabled" in this file. When splitting a port
+# into two interfaces, like 2x50G, it is NOT required that the adjacent port be
+# disabled. Adjacent ports only need to be disabled when a port is split into
+# 4 interfaces. For example, when splitting port 51 into 4 25G interfaces, port
+# 52 must be configued as "disabled" like this:
+#
+#   51=4x25G
+#   52=disabled
+#
+#  The list of ports which can be split into 4 interfaces and the adjacent ports
+#  which must be configured as "disabled" are:
+#
+# 49:  4x10G or 4x25G (would disable port 50)
+# 51:  4x10G or 4x25G (would disable port 52)
+# 53:  4x10G or 4x25G (would disable port 54)
+# 55:  4x10G or 4x25G (would disable port 56)
+#
+{% elif 'MSN2700' in ansible_product_name %}
+# ports.conf --
+#
+#        This file controls port speed, aggregation and subdivision.
+#
+# For example, the QSFP28 ports can be split into multiple interfaces. This
+# file sets the number of interfaces per port and the speed of those interfaces.
+#
+# You must reload switchd for changes to take effect.
+#
+# mlnx,x86_MSN2700 has:
+#     32 QSFP28 ports numbered 1-32
+#         These ports are configurable as 40G, 50G, 2x50G, or 100G; or a subset
+#         of them can be split into 4x25G or 4x10G.
+#
+#         Note that a port may become disabled, i.e., unusable and unconfigurable
+#         in /etc/network/interfaces, when an adjacent port is split into 4
+#         interfaces. It is REQUIRED that the disabled port be configured as
+#         "disabled" in this file when an adjacent port is split into 4
+#         interfaces.
+#
+# NOTE: When ports are split into 4 interfaces it is REQUIRED that the adjacent
+# disabled port be configured as "disabled" in this file. When splitting a port
+# into two interfaces, like 2x50G, it is NOT required that the adjacent port be
+# disabled. Adjacent ports only need to be disabled when a port is split into
+# 4 interfaces. For example, when splitting port 11 into 4 25G interfaces, port
+# 12 must be configued as "disabled" like this:
+#
+#   11=4x25G
+#   12=disabled
+#
+#  The list of ports which can be split into 4 interfaces and the adjacent ports
+#  which must be configured as "disabled" are:
+#
+#  1:  4x10G or 4x25G (would disable port 2)
+#  3:  4x10G or 4x25G (would disable port 4)
+#  5:  4x10G or 4x25G (would disable port 6)
+#  7:  4x10G or 4x25G (would disable port 8)
+#  9:  4x10G or 4x25G (would disable port 10)
+#  11: 4x10G or 4x25G (would disable port 12)
+#  13: 4x10G or 4x25G (would disable port 14)
+#  15: 4x10G or 4x25G (would disable port 16)
+#  17: 4x10G or 4x25G (would disable port 18)
+#  19: 4x10G or 4x25G (would disable port 20)
+#  21: 4x10G or 4x25G (would disable port 22)
+#  23: 4x10G or 4x25G (would disable port 24)
+#  25: 4x10G or 4x25G (would disable port 26)
+#  27: 4x10G or 4x25G (would disable port 28)
+#  29: 4x10G or 4x25G (would disable port 30)
+#  31: 4x10G or 4x25G (would disable port 32)
+#
+
+# QSFP28 ports
+#
+# <port label>    = [40G|50G|100G]
+#   or when split = [2x50G|4x10G|4x25G|disabled]
+{% endif %}
+
+{% for port in ports %}
+{% if port.name is defined %}
+{{ port.name }}={{ port.type }}
+{% endif %}
+{% if port.comment is defined %}
+{% for comment in port.comment %}
+# {{ comment }}
+{% endfor %}
+{% endif %}
+{% endfor %}

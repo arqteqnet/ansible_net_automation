@@ -1,0 +1,8 @@
+---
+
+- name: Load Interface configuration
+  template:
+    src: "interfaces.j2"
+    dest: "/etc/network/interfaces"
+  notify: reload networking
+

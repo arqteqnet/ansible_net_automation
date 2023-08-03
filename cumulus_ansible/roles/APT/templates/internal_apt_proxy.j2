@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+{% if proxy_repo is defined %}
+Acquire::http::Proxy "http://{{ proxy_repo }}:3142";
+{% else %}
+Acquire::http::Proxy "http://{{ repo_url }}:3142";
+{% endif %}
+{% if 'ld5' in ansible_hostname %}
+Acquire::http::Proxy::{{ repo_url }} DIRECT;
+{% endif %}

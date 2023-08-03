@@ -1,0 +1,9 @@
+[cumulus]
+switch0.dev.internal.example.com ansible_host=10.10.10.2 ansible_user="{{ vars_prompt_username }}"
+switch1.prod.internal.example.com ansible_user="{{ vars_prompt_username }}"
+
+[stg]
+switch0.dev.internal.example.com
+
+[prod]
+switch1.prod.internal.example.com

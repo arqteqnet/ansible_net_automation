@@ -1,0 +1,79 @@
+#jinja2:lstrip_blocks:True
+{% set personality = junos.personality | lower %}
+{% if "srx" in personality %}
+{% if forwarding_options is defined %}
+forwarding-options {
+
+    {% if forwarding_options.helpers is defined %}
+    helpers {
+        {% for protocol, config in forwarding_options.helpers.items() %}
+        {{ protocol }} {
+            server {{ config.server }};
+            interface {
+                {% if config.interface is string %}
+                {{ config.interface }};
+                {% else %}
+                {% for interface in config.interface %}
+                {{ interface }};
+                {% endfor %}
+                {% endif %}
+            }
+        }
+        {% endfor %}
+    }
+    {% endif %}
+
+    {% if forwarding_options.dhcp_relay is defined %}
+    dhcp-relay {
+        {% if forwarding_options.dhcp_relay.global_active_server_group is defined %}
+        {% set dhcp_group = forwarding_options.dhcp_relay.global_active_server_group %}
+        {% if forwarding_options.dhcp_relay.server_groups is defined %}
+        {% if dhcp_group in forwarding_options.dhcp_relay.server_groups.keys() %}
+        active-server-group {{ forwarding_options.dhcp_relay.global_active_server_group }};
+        {% endif %}{% endif %}{% endif %}
+        {% if forwarding_options.dhcp_relay.forward_only is defined and forwarding_options.dhcp_relay.forward_only is true %}
+        forward-only {
+        }
+        {% endif %}
+        {% if forwarding_options.dhcp_relay.server_groups is defined %}
+        server-group {
+            {% for group, config in forwarding_options.dhcp_relay.server_groups.items() %}
+            {{ group }} {
+                {% if config.servers is defined %}
+                {% if config.servers is string or config.servers is number %}
+                {{ config.servers }};
+                {% else %}
+                {% for server in config.servers %}
+                {{ server }};
+                {% endfor %}
+                {% endif %}
+                {% endif %}
+            }
+            {% endfor %}
+        }
+        {% endif %}
+
+        {% if forwarding_options.dhcp_relay.dhcp_groups is defined %}
+        {% for group, config in forwarding_options.dhcp_relay.dhcp_groups.items() %}
+        group {{ group }} {
+            {% if config.active_server_group is defined %}
+            active-server-group {{ config.active_server_group }};
+            {% endif %}
+
+            {% if config.interfaces is defined %}
+            {% if config.interfaces is string %}
+            interface {{ config.interfaces }};
+            {% else %}
+            {% for interface in config.interfaces %}
+            interface {{ interface }};
+            {% endfor %}
+            {% endif %}
+             {% endif %}
+        }
+        {% endfor %}
+        {% endif %}
+    }
+    {% endif %}
+}
+{% endif %}
+{% endif %}

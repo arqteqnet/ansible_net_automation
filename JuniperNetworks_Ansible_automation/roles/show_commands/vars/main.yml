@@ -1,0 +1,8 @@
+---
+commit_timeout: 240
+commit_confirm: 5
+commands_dest: "show_output/{{ inventory_hostname }}"
+connection_settings:
+  host: "{{ ansible_host }}"
+  user: "{{ vars_prompt_username }}"
+  timeout: "{{ commit_timeout }}"

@@ -1,0 +1,18 @@
+#{{ ansible_managed }}
+[Unit]
+Description=Exports Interface Information
+Documentation=interface-exporter
+
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/interface-exporter -address=127.0.0.1 -port=9014 -log.level=info
+Restart=always
+RestartSec=3
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

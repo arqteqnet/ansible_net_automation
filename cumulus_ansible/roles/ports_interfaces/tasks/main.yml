@@ -1,0 +1,40 @@
+---
+
+- name: backup configuration files
+  include: backups.yml
+  tags:
+    - backups
+    - never
+    - highstate
+
+- name: check only single host for configuring network devices
+  include: single_host.yml
+  tags:
+    - always
+
+- name: configure switch port breakouts and speeds
+  include: ports.yml
+  tags:
+    - ports
+    - breakouts
+    - never
+    - highstate
+  notify: reload networking
+
+- name: configure switch interfaces
+  include: interfaces.yml
+  tags:
+    - ports
+    - interfaces
+    - never
+    - highstate
+  notify: reload networking
+
+- name: configure switchd file #Requires Switchd restart
+  include: switchd.yml
+  tags:
+    - switchd
+    - interfaces
+    - stormcontrol
+    - never
+    - highstate

@@ -1,0 +1,5 @@
+---
+- name: delete key
+  file:
+    path: /tmp/ansible
+    state: absent

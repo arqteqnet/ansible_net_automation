@@ -1,0 +1,21 @@
+# {{ ansible_managed }}
+targets:
+   node_exporter:
+      url: http://127.0.0.1:9101/metrics
+      timeouts:
+         tcp: 10
+      mtls:
+        enabled: False
+   interface_exporter:
+      url: http://localhost:9014/metrics
+      timeouts:
+         tcp: 10
+      mtls:
+        enabled: False
+whitelist:
+  - localhost
+{% if prm_servers is defined %}
+{% for prm in prm_servers %}
+  - {{prm}}
+{% endfor %}
+{% endif %}

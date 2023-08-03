@@ -1,0 +1,6 @@
+{{ ansible_managed }}
+ARGS="--collector.diskstats.ignored-devices=^(ram|loop|fd)\d+$ \
+      --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|run)($|/) \
+      --collector.systemd \
+      --collector.ntp \
+      --web.listen-address=127.0.0.1:9101"

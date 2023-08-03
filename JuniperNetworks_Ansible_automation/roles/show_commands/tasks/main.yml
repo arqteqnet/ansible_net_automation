@@ -1,0 +1,5 @@
+---
+- name: confirm or create device config directory
+  file:
+    path: "show_output"
+    state: directory

@@ -1,0 +1,9 @@
+---
+- name: get device facts
+  juniper_junos_facts:
+    provider: "{{ connection_settings }}"
+  register: junos_facts
+  tags:
+    - diff_override
+    - override
+    - never

@@ -1,0 +1,8 @@
+---
+
+- name: Load Ports configuration
+  template:
+    src: "ports.j2"
+    dest: "/etc/cumulus/ports.conf"
+  notify: reload networking
+

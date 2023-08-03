@@ -1,0 +1,58 @@
+#jinja2:lstrip_blocks:True
+{% set personality = junos.personality | lower %}
+{% set model = junos.model | lower %}
+{% set version = junos.version | lower %}
+{% if personality == 'switch' %}
+{% if 'ex4200' in model or 'ex2200' in model %}
+
+{% if vlans is defined %}
+{% for name, data in vlans.items() %}
+{% if data.security is defined %}
+ethernet-switching-options {
+    secure-access-port {
+        vlan {{ name }} {
+            {% if data.security.dhcp_snoop is defined and data.security.dhcp_snoop == True %}
+            examine-dhcp;
+            {% endif %}
+            {% if data.security.arp_inspection is defined and data.security.arp_inspection == True %}
+            arp-inspection;
+            {% endif %}
+            {% if data.security.ip_source_guard is defined and data.security.ip_source_guard == True %}
+            ip-source-guard;
+            {% endif %}
+        }
+    }
+}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% elif 'ex3400' in model or 'ex4300' in model %}
+{% if vlans is defined %}
+{% for name, data in vlans.items() %}
+{% if data.security is defined %}
+vlans {
+    {{ name }} {
+        forwarding-options {
+            {% if data.security.dhcp_snoop is defined and data.security.dhcp_snoop == True %}
+            dhcp-security;
+            {% endif %}
+            {% if data.security.arp_inspection is defined and data.security.arp_inspection == True %}
+            dhcp-security {
+                arp-inspection;
+            }
+            {% endif %}
+            {% if version > '18' and data.security.ip_source_guard is defined and data.security.ip_source_guard == True %}
+            dhcp-security {
+                ip-source-guard;
+            }
+            {% endif %}
+        }
+    }
+}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% endif %}
+{% endif %}

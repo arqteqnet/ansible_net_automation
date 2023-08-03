@@ -1,0 +1,14 @@
+---
+
+- name: System settings playbook for Cumulus
+  hosts:
+    - cumulus
+  roles:
+    - resolv_conf
+    - APT
+  become: true
+
+  vars_prompt:
+    - name: vars_prompt_username
+      prompt: "Enter your Cumulus username ?"
+      private: no

@@ -1,0 +1,43 @@
+---
+
+- name: copy Yoti Repo to Sources.d
+  template:
+    src: yoti_repo.j2
+    dest: /etc/apt/sources.list.d/yoti.list
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'Debian'
+
+- name: copy Yoti Apt Key to system
+  template:
+    src: yoti_gpg.j2
+    dest: /root/yoti_apt.gpg
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'Debian'
+  register: aptkey
+
+- name: add a gpg key
+  ansible.builtin.apt_key:
+    id: 98D8D052DBE28EA85F8B38DB0E44F422EB187A83
+    file: /root/yoti_apt.gpg
+    state: present
+  when: ansible_os_family == 'Debian'
+  register: gpgkey
+
+- name: copy Yoti Apt Proxy
+  template:
+    src: yoti_apt_proxy.j2
+    dest: /etc/apt/apt.conf.d/01proxy
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'Debian'
+  register: aptproxy
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  when: aptkey.changed or aptproxy.changed or gpgkey.changed

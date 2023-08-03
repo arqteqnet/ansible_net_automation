@@ -1,0 +1,6 @@
+---
+- name: Check for single host
+  fail: msg="Single host check failed. Plesse select single host using --limit="
+  when: "{{ play_hosts|length }} != 1"
+- debug: msg='Checking for Single Host to run Playbook against'
+

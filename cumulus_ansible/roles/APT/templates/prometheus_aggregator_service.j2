@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+[Unit]
+Description=prometheusAggregator (aggregates multiple exports to a single endpoint)
+Documentation=TBC
+
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/prometheusAggregator -port=9100
+Restart=always
+RestartSec=3
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

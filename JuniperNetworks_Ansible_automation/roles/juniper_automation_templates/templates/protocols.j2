@@ -1,0 +1,26 @@
+#jinja2:lstrip_blocks:True
+{% set hostname = junos.hostname | lower %}
+{% set personality = junos.personality | lower %}
+{% if protocols is defined or protocols_common is defined %}
+protocols {
+    {% if protocols.router_discovery is defined %}
+    router-discovery {
+    {% if protocols.router_discovery.disabled is defined %}
+    {% if protocols.router_discovery.disabled is true %}
+    disable;
+    {% endif %}
+    {% endif %}
+    }
+    {% endif %}
+
+    {% if protocols_common.router_discovery is defined %}
+    router-discovery {
+    {% if protocols_common.router_discovery.disabled is defined %}
+    {% if protocols_common.router_discovery.disabled is true %}
+    disable;
+    {% endif %}
+    {% endif %}
+    }
+    {% endif %}
+		  }
+{% endif %}

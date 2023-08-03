@@ -1,0 +1,13 @@
+---
+
+- name: Load switchd configuration THW
+  template:
+    src: "switchd.j2"
+    dest: "/etc/cumulus/switchd.conf"
+  when: "'thw' in ansible_hostname"
+
+- name: Load switchd configuration PPD
+  template:
+    src: "ppd_switchd.j2"
+    dest: "/etc/cumulus/switchd.conf"
+  when: "'ppd' in ansible_hostname"

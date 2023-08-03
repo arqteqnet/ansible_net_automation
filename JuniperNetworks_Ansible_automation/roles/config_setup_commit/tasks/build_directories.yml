@@ -1,0 +1,39 @@
+---
+- name: confirm or create device config directory
+  file:
+    path: "{{ config_assemble }}"
+    state: directory
+
+- name: Check if config file exists
+  stat:
+    path: "{{ config_file }}"
+  register: config_exists
+
+
+- name: remove templated config from previous build if exists
+  file:
+    path: "{{ config_file }}"
+    state: absent
+  when: config_exists.stat.exists
+
+- name: find files with diff extension
+  find:
+    paths: "{{ config_assemble }}"
+    patterns: "*diff"
+  register: find_results
+
+- name: delete all files with diff extension
+  file:
+    path: "{{ item['path'] }}"
+    state: absent
+  with_items: "{{ find_results['files'] }}"
+
+- name: delete previous build directory
+  file:
+    path: "{{ config_assemble_build }}"
+    state: absent
+
+- name: create build directory
+  file:
+    path: "{{ config_assemble_build }}"
+    state: directory

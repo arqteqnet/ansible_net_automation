@@ -1,0 +1,174 @@
+snmp {
+    {% if hostname is defined %}
+    name {{ hostname }};
+    {% endif %}
+    {% if snmp.description is defined %}
+    description "{{ snmp.description }}";
+    {% endif %}
+    {% if snmp.location is defined %}
+    location "{{ snmp.location }}";
+    {% endif %}
+    {% if snmp.contact is defined %}
+    contact "{{ snmp.contact }}";
+    {% endif %}
+    {% if snmp.interface is defined %}
+    {% if snmp.interface is string %}
+    interface {{ snmp.interface }};
+    {% else %}
+    interface [ {{ snmp.interface|join (" ") }} ];
+    {% endif %}{% endif %}
+    {% if snmp.filter_interface is defined %}
+    filter-interfaces {
+        interfaces {
+            {% if snmp.filter_interface.interfaces is defined %}
+            {% if snmp.filter_interface.interfaces is string %}
+            {{ snmp.filter_interface.interfaces }};
+            {% else%}
+            {% for iface in snmp.filter_interface.interfaces %}
+            {{ iface }};
+            {% endfor %}
+            {% endif %}{% endif %}
+            {% if snmp.filter_interface.regex is defined %}
+            {% if snmp.filter_interface.regex is string %}
+            "{{ snmp.filter_interface.regex }}";
+            {% endif %}{% endif %}
+        }
+    {% if snmp.filter_interface.filter_all_internal is defined %}
+    {% if snmp.filter_interface.filter_all_internal == true %}
+        all-internal-interfaces;
+    {% endif %}{% endif %}
+    }
+    {% endif %}
+    {% if snmp_global is defined %}
+    {% if snmp_global.filter_interface is defined %}
+    filter-interfaces {
+        interfaces {
+            {% if snmp_global.filter_interface.interfaces is defined %}
+            {% if snmp_global.filter_interface.interfaces is string %}
+            {{ snmp_global.filter_interface.interfaces }};
+            {% else%}
+            {% for iface in snmp_global.filter_interface.interfaces %}
+            {{ iface }};
+            {% endfor %}
+            {% endif %}{% endif %}
+            {% if snmp_global.filter_interface.regex is defined %}
+            {% if snmp_global.filter_interface.regex is string %}
+            "{{ snmp_global.filter_interface.regex }}";
+            {% endif %}{% endif %}
+        }
+    {% if snmp_global.filter_interface.filter_all_internal is defined %}
+    {% if snmp_global.filter_interface.filter_all_internal == true %}
+        all-internal-interfaces;
+    {% endif %}{% endif %}
+    }
+    {% endif %}
+    {% endif %}
+    filter-duplicates;
+    {% if snmp.v3 is defined %}
+    v3 {
+    {% if snmp.v3.user_security_model is defined %}
+    usm {
+        {% if snmp.v3.user_security_model.local_engine is defined %}
+        local-engine {
+            {% for user, config in snmp.v3.user_security_model.local_engine.items() %}
+            user {{ user }} {
+                {% if config.auth_sha_key is defined %}
+                authentication-sha {
+                    authentication-key "{{ config.auth_sha_key }}"; ## SECRET-DATA
+                }
+                {% endif %}
+                {% if config.privacy_aes is defined %}
+                privacy-aes128 {
+                    privacy-key "{{ config.privacy_aes  }}"; ## SECRET-DATA
+                }
+                {% endif %}
+            }
+            {% endfor %}
+        }
+        {% endif %}
+    }
+    {% endif %}
+    {% if snmp.v3.view_access_control is defined %}
+    vacm {
+        {% if snmp.v3.view_access_control.security_model is defined %}
+        security-to-group {
+            {% for model, user_config in snmp.v3.view_access_control.security_model.items() %}
+            security-model {{ model }} {
+                security-name {{ user_config.user }} {
+                    group {{ user_config.group }};
+                }
+            }
+            {% endfor %}
+        }
+        {% endif %}
+        {% if snmp.v3.view_access_control.access_groups is defined %}
+        access {
+            {% for group, config in snmp.v3.view_access_control.access_groups.items() %}
+            group {{ group }} {
+                default-context-prefix {
+                    security-model {{ config.security_model }} {
+                        security-level {{ config.security_level }} {
+                            read-view {{ config.read_view }};
+                        }
+                    }
+                }
+            }
+            {% endfor %}
+        }
+        {% endif %}
+    }
+    {% endif %}
+}
+{% endif %}
+
+    engine-id {
+        use-default-ip-address;
+    }
+    view snmpview1 {
+        oid internet include;
+    }
+    {% if snmp is defined %}
+    {% if snmp.community_lists is defined %}
+    {% for list, config in snmp.community_lists.items() %}
+    client-list {{ list }} {
+      {% for host in config %}
+        {{ host }};
+      {% endfor %}
+    }
+    {% endfor %}{% endif %}
+    {% if snmp.community is defined %}
+    {% for comm, details in snmp.community.items() %}
+    community {{ comm }} {
+        client-list-name {{ details.community_lists }}
+        view snmpview1;
+        authorization read-only;
+    }
+    {% endfor %}{% endif %}
+    {% endif %}
+    {% if snmp_common is defined %}
+    {% if snmp_common.contact is defined %}
+    contact "{{ snmp_common.contact }}";
+    {% endif %}
+    {% if snmp_common.community_lists is defined %}
+    {% for list, config in snmp_common.community_lists.items() %}
+    client-list {{ list }} {
+      {% for host in config %}
+        {{ host }};
+      {% endfor %}
+    }
+    {% endfor %}{% endif %}
+    {% if snmp_common.community is defined %}
+    {% for comm, details in snmp_common.community.items() %}
+    community {{ comm }} {
+        client-list-name {{ details.community_lists }}
+        view snmpview1;
+        authorization read-only;
+    }
+    {% endfor %}{% endif %}
+    {% endif %}
+    trap-options {
+        source-address {{ mgmt.ip }};
+    }
+    routing-instance-access;
+    health-monitor;
+}
